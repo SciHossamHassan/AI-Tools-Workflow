@@ -1,0 +1,323 @@
+openapi: 3.0.0
+info:
+  title: Top AI Tools Hub API
+  description: This is the API for managing AI tool directory search, workflows
+    creation, and AI tool suggestions for tasks in workflows.
+  version: 1.0.0
+servers:
+  - url: http://localhost:1337
+    description: Development server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ai_tool:
+      type: object
+      properties:
+        tool_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        capabilities:
+          type: string
+        outputs:
+          type: string
+        pricing:
+          type: string
+        ease_of_use:
+          type: integer
+        tags:
+          type: string
+        example_usage:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    workflow_node:
+      type: object
+      properties:
+        node_id:
+          type: string
+        workflow_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        connected_nodes:
+          type: string
+          description: Comma separated node IDs which are connected to this node
+        created_at:
+          type: string
+          format: date-time
+    ai_tool_node_suggestion:
+      type: object
+      properties:
+        suggestion_id:
+          type: string
+        node_id:
+          type: string
+        tool_id:
+          type: string
+        rank:
+          type: integer
+    workflow:
+      type: object
+      properties:
+        workflow_id:
+          type: string
+        user_id:
+          type: string
+          nullable: true
+        title:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        is_predefined:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    create_workflow_request:
+      type: object
+      required:
+        - title
+        - category
+      properties:
+        title:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        user_id:
+          type: string
+          nullable: true
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/workflow_node"
+    user:
+      type: object
+      properties:
+        user_id:
+          type: string
+        email:
+          type: string
+        password_hash:
+          type: string
+        first_name:
+          type: string
+          nullable: true
+        last_name:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+  parameters:
+    id:
+      user_id:
+        in: path
+        name: user_id
+        required: true
+        schema:
+          type: string
+        description: Unique identifier for the user
+    tool_id:
+      in: path
+      name: tool_id
+      required: true
+      schema:
+        type: string
+      description: Unique identifier for the AI tool
+    workflow_id:
+      in: path
+      name: workflow_id
+      required: true
+      schema:
+        type: string
+      description: Unique identifier for the workflow
+    node_id:
+      in: path
+      name: node_id
+      required: true
+      schema:
+        type: string
+      description: Unique identifier for the workflow node
+  responses:
+    UnauthorizedError:
+      description: Access token is missing or invalid
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+security:
+  - bearerAuth: []
+paths:
+  /api/ai_tools:
+    get:
+      summary: Retrieve AI tools with search and filter options
+      operationId: getAITools
+      parameters:
+        - in: query
+          name: pricing
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: tags
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: name
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A list of AI tools based on the filters.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ai_tool"
+  /api/workflows:
+    post:
+      summary: Create a new custom workflow
+      operationId: createWorkflow
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/create_workflow_request"
+      responses:
+        "201":
+          description: The workflow was successfully created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/workflow"
+    get:
+      summary: Get all user-created workflows
+      operationId: getWorkflows
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: A list of workflows created by the user.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/workflow"
+  /api/workflows/{workflow_id}/nodes/{node_id}/suggestions:
+    get:
+      summary: Fetch AI tool suggestions for a specific node in the workflow
+      operationId: getWorkflowNodeToolSuggestions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/workflow_id"
+        - $ref: "#/components/parameters/node_id"
+      responses:
+        "200":
+          description: A list of AI tool suggestions for the workflow node.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ai_tool"
+  /api/users:
+    post:
+      summary: Create a user account
+      operationId: createUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/user"
+      responses:
+        "201":
+          description: The user was successfully created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/user"
+  /api/users/login:
+    post:
+      summary: Login existing user
+      operationId: loginUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: JWT token provided for authenticated user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+  /api/workflows/{workflow_id}:
+    get:
+      summary: Get details of a specific workflow
+      operationId: getWorkflow
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/workflow_id"
+      responses:
+        "200":
+          description: A specific workflow detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/workflow"
+    put:
+      summary: Update a specific workflow
+      operationId: updateWorkflow
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/workflow_id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/create_workflow_request"
+      responses:
+        "200":
+          description: The updated workflow details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/workflow"
